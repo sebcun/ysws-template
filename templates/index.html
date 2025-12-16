@@ -6,7 +6,15 @@
     <title>HomeLab</title>
     <link
       rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
+      href="{{ url_for('static', filename='base.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='faqs.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='rewards.css') }}"
     />
   </head>
   <body>
@@ -44,11 +52,18 @@
       <h2 class="section-title">Frequently Asked Questions</h2>
       <div class="faq-list">
         {% for question, answer in config.faqs.items() %}
-        <div class="faq-item">
-          <h3 class="faq-question">{{ question }}</h3>
-          <p class="faq-answer">
-            {{ answer | replace('\n', '<br />') | safe }}
-          </p>
+        <div class="faq-card fade-in-element">
+          <button
+            class="faq-question"
+            onclick="toggleFAQ(this)"
+            aria-expanded="false"
+          >
+            <span>{{ question }}</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="faq-answer">
+            <p>{{ answer | replace('\n', '<br />') | safe }}</p>
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -117,81 +132,116 @@
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         const grid = document.getElementById("shop-grid");
-        const initialCards = Array.from(grid.children);
-        const observerOptions = {
-          threshold: 0.1,
-          rootMargin: "0px 0px -50px 0px",
-        };
+        if (grid) {
+          const initialCards = Array.from(grid.children);
+          const observerOptions = {
+            threshold: 0.1,
+            rootMargin: "0px 0px -50px 0px",
+          };
 
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-              setTimeout(() => {
-                entry.target.classList.add("fade-in");
-              }, index * 50);
-              observer.unobserve(entry.target);
-            }
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, index) => {
+              if (entry.isIntersecting) {
+                setTimeout(() => {
+                  entry.target.classList.add("fade-in");
+                }, index * 50);
+                observer.unobserve(entry.target);
+              }
+            });
+          }, observerOptions);
+
+          initialCards.forEach((card) => {
+            card.classList.add("fade-in-element");
+            observer.observe(card);
           });
-        }, observerOptions);
 
-        initialCards.forEach((card) => {
-          card.classList.add("fade-in-element");
-          observer.observe(card);
-        });
+          const getHours = (card) => {
+            const hoursText = card.querySelector(".shop-card-hours").innerText;
+            return parseInt(hoursText);
+          };
+          const getCardText = (card) => {
+            const title = card
+              .querySelector(".shop-card-title")
+              .innerText.toLowerCase();
+            const description = card
+              .querySelector(".shop-card-description")
+              .innerText.toLowerCase();
+            return title + " " + description;
+          };
 
-        const getHours = (card) => {
-          const hoursText = card.querySelector(".shop-card-hours").innerText;
-          return parseInt(hoursText);
-        };
-        const getCardText = (card) => {
-          const title = card
-            .querySelector(".shop-card-title")
-            .innerText.toLowerCase();
-          const description = card
-            .querySelector(".shop-card-description")
-            .innerText.toLowerCase();
-          return title + " " + description;
-        };
+          window.searchItems = function () {
+            const searchInput = document.getElementById("search-input");
+            const searchTerm = searchInput.value.toLowerCase();
+            const allCards = Array.from(grid.children);
 
-        window.searchItems = function () {
-          const searchInput = document.getElementById("search-input");
-          const searchTerm = searchInput.value.toLowerCase();
-          const allCards = Array.from(grid.children);
+            allCards.forEach((card) => {
+              const cardText = getCardText(card);
+              if (cardText.includes(searchTerm)) {
+                card.style.display = "block";
+                card.classList.add("search-visible");
+              } else {
+                card.style.display = "none";
+                card.classList.remove("search-visible");
+              }
+            });
+          };
 
-          allCards.forEach((card) => {
-            const cardText = getCardText(card);
-            if (cardText.includes(searchTerm)) {
-              card.style.display = "block";
-              card.classList.add("search-visible");
-            } else {
-              card.style.display = "none";
-              card.classList.remove("search-visible");
+          window.sortRewards = function () {
+            const select = document.getElementById("sort-select");
+            const sortValue = select.value;
+            const currentCards = Array.from(grid.children).filter(
+              (card) => card.style.display !== "none"
+            );
+            const allCards = Array.from(grid.children);
+            allCards.sort((a, b) => {
+              const aHours = getHours(a);
+              const bHours = getHours(b);
+
+              if (sortValue === "asc") {
+                return aHours - bHours;
+              } else {
+                return bHours - aHours;
+              }
+            });
+
+            grid.innerHTML = "";
+            allCards.forEach((card) => grid.appendChild(card));
+          };
+          sortRewards();
+        }
+
+        const faqList = document.querySelector(".faq-list");
+        if (faqList) {
+          const faqCards = Array.from(faqList.children);
+          const faqObserver = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry, index) => {
+                if (entry.isIntersecting) {
+                  setTimeout(() => {
+                    entry.target.classList.add("fade-in");
+                  }, index * 50);
+                  faqObserver.unobserve(entry.target);
+                }
+              });
+            },
+            {
+              threshold: 0.1,
+              rootMargin: "0px 0px -50px 0px",
             }
-          });
-        };
-
-        window.sortRewards = function () {
-          const select = document.getElementById("sort-select");
-          const sortValue = select.value;
-          const currentCards = Array.from(grid.children).filter(
-            (card) => card.style.display !== "none"
           );
-          const allCards = Array.from(grid.children);
-          allCards.sort((a, b) => {
-            const aHours = getHours(a);
-            const bHours = getHours(b);
 
-            if (sortValue === "asc") {
-              return aHours - bHours;
-            } else {
-              return bHours - aHours;
-            }
+          faqCards.forEach((card) => {
+            card.classList.add("fade-in-element");
+            faqObserver.observe(card);
           });
+        }
 
-          grid.innerHTML = "";
-          allCards.forEach((card) => grid.appendChild(card));
+        window.toggleFAQ = function (button) {
+          const card = button.parentElement;
+          const isOpen = card.classList.contains("open");
+          button.setAttribute("aria-expanded", !isOpen);
+          card.classList.toggle("open");
         };
-        sortRewards();
       });
     </script>
   </body>
