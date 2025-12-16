@@ -56,20 +56,7 @@
 
     <section class="rewards-section" id="rewards">
       <div class="rewards-container">
-        <h2 class="section-title">Rewards Shop</h2>
-        <p class="shop-subtitle">
-          Earn hours by building projects and spend them on hardware for your
-          homelab!<br />
-          <span class="currency-note"
-            >1 hour = 10
-            <img
-              src="{{ url_for('static', filename='assets/lancurrency.png') }}"
-              alt="ethernet"
-              class="currency-icon"
-            />
-            ethernet cables</span
-          >
-        </p>
+        <h2 class="section-title">Rewards</h2>
 
         <div class="shop-controls">
           <div class="search-container">
@@ -79,16 +66,15 @@
               placeholder="Search for items..."
               oninput="searchItems()"
             />
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
           </div>
           <div class="sort-container">
             <div class="sort-label-wrapper">
               <i class="fa-solid fa-filter"></i>
-              <label for="sort-select">Sort by:</label>
+              <label for="sort-select">Sort by hours:</label>
             </div>
             <select id="sort-select" onchange="sortRewards()">
-              <option value="asc">Hours: Low to High</option>
-              <option value="desc">Hours: High to Low</option>
+              <option value="asc">Low to High</option>
+              <option value="desc">High to Low</option>
             </select>
           </div>
         </div>
