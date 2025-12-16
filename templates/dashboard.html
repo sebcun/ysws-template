@@ -50,7 +50,7 @@
       <section class="projects-section">
         <h2>Your Projects</h2>
         <div class="carousel">
-          <div class="add-card">
+          <div class="add-card" onclick="openModal()">
             <div class="add-icon">+</div>
             <p>Add New Project</p>
           </div>
@@ -119,5 +119,74 @@
         </div>
       </section> -->
     </main>
+
+    <div id="addProjectModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Add New Project</h2>
+        <form id="addProjectForm" onsubmit="submitProject(event)">
+          <label for="title">Title *</label>
+          <input type="text" id="title" name="title" required />
+
+          <label for="description">Description *</label>
+          <textarea id="description" name="description" required></textarea>
+
+          <label for="demoLink">Demo Link</label>
+          <input type="url" id="demoLink" name="demoLink" />
+
+          <label for="githubLink">GitHub Link</label>
+          <input type="url" id="githubLink" name="githubLink" />
+
+          <label for="hours">Hours *</label>
+          <select id="hours" name="hours" required>
+            <option value="">Select hours</option>
+            {% for i in range(1, 101) %}
+            <option value="{{ i }}">
+              {{ i }} hour{{ 's' if i != 1 else '' }}
+            </option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn-submit">Add Project</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function openModal() {
+        const modal = document.getElementById("addProjectModal");
+        modal.style.display = "block";
+        setTimeout(() => {
+          modal.style.opacity = "1";
+          modal.style.visibility = "visible";
+        }, 10);
+      }
+
+      function closeModal() {
+        const modal = document.getElementById("addProjectModal");
+        modal.style.opacity = "0";
+        modal.style.visibility = "hidden";
+        setTimeout(() => {
+          modal.style.display = "none";
+        }, 300);
+        document.getElementById("addProjectForm").reset();
+      }
+
+      function submitProject(event) {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const data = Object.fromEntries(formData);
+        console.log("Project data:", data);
+        alert("Project added! (Frontend only - check console for data)");
+        closeModal();
+      }
+
+      window.onclick = function (event) {
+        const modal = document.getElementById("addProjectModal");
+        if (event.target === modal) {
+          closeModal();
+        }
+      };
+    </script>
   </body>
 </html>
