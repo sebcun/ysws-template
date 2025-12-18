@@ -97,6 +97,19 @@ def dashboard():
     else:
         return redirect(url_for('login'))
 
+@app.route('/edit_project', methods=['POST'])
+def edit_project():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    project_id = request.form.get('project_id')
+    title = request.form.get('title')
+    description = request.form.get('description')
+    demo_link = request.form.get('demoLink')
+    github_link = request.form.get('githubLink')
+    hackatime_project = request.form.get('hours')
+    db.update_project(project_id, title, description, demo_link, github_link, hackatime_project)
+    return redirect(url_for('dashboard'))
+
 @app.route('/create_project', methods=['POST'])
 def create_project():
     if 'user' not in session:

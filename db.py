@@ -51,3 +51,10 @@ def get_projects(user_id):
     projects = c.fetchall()
     conn.close()
     return projects
+
+def update_project(project_id, title, description, demo_link, github_link, hackatime_project):
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('UPDATE projects SET title=?, description=?, demo_link=?, github_link=?, hackatime_project=? WHERE id=?', (title, description, demo_link, github_link, hackatime_project, project_id))
+    conn.commit()
+    conn.close()

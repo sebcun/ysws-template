@@ -14,24 +14,129 @@
     />
     <style>
       :root {
-        --primary: {{ config.colors.primary }};
-        --primary-rgb: {{ config.colors.primary_rgb }};
-        --primary-hover: {{ config.colors.primary_hover }};
-        --primary-hover-rgb: {{ config.colors.primary_hover_rgb }};
-        --background-dark: {{ config.colors.background_dark }};
-        --background-dark-rgb: {{ config.colors.background_dark_rgb }};
-        --background-secondary: {{ config.colors.background_secondary }};
-        --background-secondary-rgb: {{ config.colors.background_secondary_rgb }};
-        --text-white: {{ config.colors.text_white }};
-        --text-white-rgb: {{ config.colors.text_white_rgb }};
-        --text-light: {{ config.colors.text_light }};
-        --text-medium: {{ config.colors.text_medium }};
-        --text-gray: {{ config.colors.text_gray }};
-        --text-dark-gray: {{ config.colors.text_dark_gray }};
-        --neutral-rgb: {{ config.colors.hero_gradial_rgb }};
+        --primary: {
+            {
+            config.colors.primary
+          }
+        }
+
+        ;
+
+        --primary-rgb: {
+            {
+            config.colors.primary_rgb
+          }
+        }
+
+        ;
+
+        --primary-hover: {
+            {
+            config.colors.primary_hover
+          }
+        }
+
+        ;
+
+        --primary-hover-rgb: {
+            {
+            config.colors.primary_hover_rgb
+          }
+        }
+
+        ;
+
+        --background-dark: {
+            {
+            config.colors.background_dark
+          }
+        }
+
+        ;
+
+        --background-dark-rgb: {
+            {
+            config.colors.background_dark_rgb
+          }
+        }
+
+        ;
+
+        --background-secondary: {
+            {
+            config.colors.background_secondary
+          }
+        }
+
+        ;
+
+        --background-secondary-rgb: {
+            {
+            config.colors.background_secondary_rgb
+          }
+        }
+
+        ;
+
+        --text-white: {
+            {
+            config.colors.text_white
+          }
+        }
+
+        ;
+
+        --text-white-rgb: {
+            {
+            config.colors.text_white_rgb
+          }
+        }
+
+        ;
+
+        --text-light: {
+            {
+            config.colors.text_light
+          }
+        }
+
+        ;
+
+        --text-medium: {
+            {
+            config.colors.text_medium
+          }
+        }
+
+        ;
+
+        --text-gray: {
+            {
+            config.colors.text_gray
+          }
+        }
+
+        ;
+
+        --text-dark-gray: {
+            {
+            config.colors.text_dark_gray
+          }
+        }
+
+        ;
+
+        --neutral-rgb: {
+            {
+            config.colors.hero_gradial_rgb
+          }
+        }
+
+        ;
       }
     </style>
   </head>
+
   <body>
     <nav class="navbar">
       <ul>
@@ -65,7 +170,12 @@
             <p class="project-description">{{ project[2] }}</p>
             <div class="project-footer">
               <span class="project-hours">{{ project[8] }} logged</span>
-              <a href="#" class="btn btn-small disabled">Edit</a>
+              <a
+                href="#"
+                class="btn btn-small"
+                onclick="openEditModal({{ project[0] }})"
+                >Edit</a
+              >
             </div>
           </div>
           {% endfor %}
@@ -139,6 +249,39 @@
       </div>
     </div>
 
+    <div id="editProjectModal" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeEditModal()">&times;</span>
+        <h2>Edit Project</h2>
+        <form id="editProjectForm" action="/edit_project" method="post">
+          <input type="hidden" name="project_id" id="editProjectId" />
+          <label for="editTitle">Title *</label>
+          <input type="text" id="editTitle" name="title" required />
+
+          <label for="editDescription">Description *</label>
+          <textarea id="editDescription" name="description" required></textarea>
+
+          <label for="editDemoLink">Demo Link</label>
+          <input type="url" id="editDemoLink" name="demoLink" />
+
+          <label for="editGithubLink">GitHub Link</label>
+          <input type="url" id="editGithubLink" name="githubLink" />
+
+          <label for="editHours">Hours *</label>
+          <select id="editHours" name="hours" required>
+            <option value="">Select hours</option>
+            {% for project in hackatime.data.projects %}
+            <option value="{{ project.name }}">
+              {{ project.name }} ({{ project.text }})
+            </option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn-submit">Update Project</button>
+        </form>
+      </div>
+    </div>
+
     <script>
       function openModal() {
         const modal = document.getElementById("addProjectModal");
@@ -163,6 +306,49 @@
         const modal = document.getElementById("addProjectModal");
         if (event.target === modal) {
           closeModal();
+        }
+      };
+
+
+      const projects = {{ projects | tojson }};
+
+      function openEditModal(projectId) {
+        const project = projects.find(p => p[0] === projectId);
+        if (!project) return;
+
+        document.getElementById('editProjectId').value = project[0];
+        document.getElementById('editTitle').value = project[1];
+        document.getElementById('editDescription').value = project[2];
+        document.getElementById('editDemoLink').value = project[3] || '';
+        document.getElementById('editGithubLink').value = project[4] || '';
+        document.getElementById('editHours').value = project[5];
+
+        const modal = document.getElementById("editProjectModal");
+        modal.style.display = "block";
+        setTimeout(() => {
+          modal.style.opacity = "1";
+          modal.style.visibility = "visible";
+        }, 10);
+      }
+
+      function closeEditModal() {
+        const modal = document.getElementById("editProjectModal");
+        modal.style.opacity = "0";
+        modal.style.visibility = "hidden";
+        setTimeout(() => {
+          modal.style.display = "none";
+        }, 300);
+        document.getElementById("editProjectForm").reset();
+      }
+
+      window.onclick = function (event) {
+        const addModal = document.getElementById("addProjectModal");
+        const editModal = document.getElementById("editProjectModal");
+        if (event.target === addModal) {
+          closeModal();
+        }
+        if (event.target === editModal) {
+          closeEditModal();
         }
       };
     </script>
