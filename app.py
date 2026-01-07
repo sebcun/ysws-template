@@ -6,6 +6,7 @@ from functools import wraps
 from datetime import timedelta
 import db
 import admin_db
+import slack
 
 app = Flask(__name__)
 app.secret_key = os.getenv('APP_SECRET', os.urandom(24))
@@ -310,7 +311,7 @@ def create_faq_endpoint():
     if 'slack_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    if user['slack_id'] not in ADMIN_EMAILS:
+    if session['slack_id'] not in ADMIN_EMAILS:
         return jsonify({'error': 'Unauthorized'}), 403
         
     
@@ -329,7 +330,7 @@ def delete_faq_endpoint(faq_id):
     if 'slack_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    if user['slack_id'] not in ADMIN_EMAILS:
+    if session['slack_id'] not in ADMIN_EMAILS:
         return jsonify({'error': 'Unauthorized'}), 403
     
     success = admin_db.delete_faq(faq_id)
@@ -345,7 +346,7 @@ def create_reward_endpoint():
     if 'slack_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    if user['slack_id'] not in ADMIN_EMAILS:
+    if session['slack_id'] not in ADMIN_EMAILS:
         return jsonify({'error': 'Unauthorized'}), 403
     
     data = request.get_json()
@@ -370,7 +371,7 @@ def delete_reward_endpoint(reward_id):
     if 'slack_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    if user['slack_id'] not in ADMIN_EMAILS:
+    if session['slack_id'] not in ADMIN_EMAILS:
         return jsonify({'error': 'Unauthorized'}), 403
     
     success = admin_db.delete_reward(reward_id)
@@ -395,7 +396,20 @@ def approve_project(project_id):
     if session['slack_id'] not in REVIEWER_EMAILS:
         return jsonify({'error': 'Unauthorized'}), 403
     
+    project = db.get_project_by_id(project_id)
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+    
+    user = db.get_user_by_id(project['user_id'])
+    if user:
+        project['slack_id'] = user['slack_id']
+        project['nickname'] = user['nickname']
+    
     success = db.update_project_status(project_id, 'Shipped')
+    
+    if success:
+        slack.project_shipped(project)
+    
     return jsonify({'success': success})
 
 @app.route('/api/reviewer/projects/<int:project_id>/reject', methods=['POST'])
