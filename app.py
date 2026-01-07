@@ -5,6 +5,7 @@ import requests
 from functools import wraps
 from datetime import timedelta
 import db
+import admin_db
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
@@ -16,9 +17,10 @@ TOKEN_URL = 'https://auth.hackclub.com/oauth/token'
 JWKS_URL = 'https://auth.hackclub.com/oauth/discovery/keys'
 USERINFO_URL = 'https://auth.hackclub.com/oauth/userinfo'
 
-ADMIN_EMAILS = os.getenv('ADMIN_EMAILS', '').split(',')
+ADMIN_EMAILS = os.getenv('ORGS', '').split(',')
 
 db.init_db()
+admin_db.init_db()
 
 def login_required(f):
     @wraps(f)
@@ -34,7 +36,7 @@ def admin_required(f):
         if 'user_id' not in session:
             return redirect(url_for('login'))
         user = db.get_user_by_id(session['user_id'])
-        if not user or user['email'] not in ADMIN_EMAILS:
+        if not user or user['slack_id'] not in ADMIN_EMAILS:
             return "Unauthorized", 403
         return f(*args, **kwargs)
     return decorated_function
@@ -309,6 +311,82 @@ def update_user_profile():
     if success and data.get('nickname'):
         session['nickname'] = data.get('nickname')
     
+    return jsonify({'success': success})
+        
+@app.route('/api/faqs', methods=['GET'])
+def get_faqs():
+    faqs = admin_db.get_all_faqs()
+    return jsonify({'faqs': faqs})
+
+@app.route('/api/admin/faqs', methods=['POST'])
+def create_faq_endpoint():
+    if 'slack_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if user['slack_id'] not in ADMIN_EMAILS:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    
+    data = request.get_json()
+    question = data.get('question')
+    answer = data.get('answer')
+    
+    if not question or not answer:
+        return jsonify({'error': 'Question and answer required'}), 400
+    
+    faq_id = admin_db.create_faq(question, answer)
+    return jsonify({'success': True, 'faq_id': faq_id}), 201
+
+@app.route('/api/admin/faqs/<int:faq_id>', methods=['DELETE'])
+def delete_faq_endpoint(faq_id):
+    if 'slack_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if user['slack_id'] not in ADMIN_EMAILS:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    success = admin_db.delete_faq(faq_id)
+    return jsonify({'success': success})
+
+@app.route('/api/rewards', methods=['GET'])
+def get_rewards():
+    rewards = admin_db.get_all_rewards()
+    return jsonify({'rewards': rewards})
+
+@app.route('/api/admin/rewards', methods=['POST'])
+def create_reward_endpoint():
+    if 'slack_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if user['slack_id'] not in ADMIN_EMAILS:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
+    cost = data.get('cost')
+    image_url = data.get('image_url')
+    
+    if not all([name, description, cost, image_url]):
+        return jsonify({'error': 'All fields required'}), 400
+    
+    try:
+        cost = float(cost)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Cost must be a number'}), 400
+    
+    reward_id = admin_db.create_reward(name, description, cost, image_url)
+    return jsonify({'success': True, 'reward_id': reward_id}), 201
+
+@app.route('/api/admin/rewards/<int:reward_id>', methods=['DELETE'])
+def delete_reward_endpoint(reward_id):
+    if 'slack_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if user['slack_id'] not in ADMIN_EMAILS:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    success = admin_db.delete_reward(reward_id)
     return jsonify({'success': success})
 
 if __name__ == '__main__':
