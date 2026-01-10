@@ -6,7 +6,8 @@
   --danger: #dc3545;
 
   --bg: #0b0f14;
-  --bg-surface: #141b26;
+  --bg-secondary: #141b26;
+  --bg-surface: #171f2b;
 
   --surface: #ffffff;
   --surface-light: #f8f9fa;
@@ -24,6 +25,7 @@
   --white-rgb: 255, 255, 255;
   --hero-grad-rgb: 30, 64, 175;
 }
+
 
 body {
   background-color: var(--bg) !important;
@@ -56,7 +58,7 @@ a:hover {
 
 .bg-light,
 .bg-white {
-  background-color: var(--bg-surface) !important;
+  background-color: var(--bg-secondary) !important;
   color: var(--text) !important;
 }
 

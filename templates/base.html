@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}YSWS Template{% endblock %}</title>
+    <title>{% block title %}{{ site.home.title }}{% endblock %}</title>
+
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -22,6 +23,23 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='css/theming.css') }}"
     />
+
+    {% if site.colors %}
+    <style>
+      :root {
+        --primary: {{ site.colors.primary }};
+        --primary-rgb: {{ site.colors.primary_rgb }};
+        --primary-hover: {{ site.colors.primary_hover }};
+        --bg: {{ site.colors.bg }};
+        --bg-secondary: {{ site.colors.bg_secondary }};
+        --bg-surface: {{ site.colors.bg_surface }};
+        --text: {{ site.colors.text }};
+        --text-strong: {{ site.colors.text_strong }};
+        --hero-grad-rgb: {{ site.colors.hero_grad_rbg }};
+      }
+    </style>
+    {% endif %}
+
     <style>
       @media (min-width: 992px) {
         .navbar-center {
@@ -31,7 +49,8 @@
         }
       }
     </style>
-    {% block head %}YSWS Template{% endblock %}
+
+    {% block head %}{{ site.home.title }}{% endblock %}
   </head>
   <body>
     {% block hackclub_flag %}
@@ -39,10 +58,12 @@
       src="/static/imgs/flag-orpheus-left.png"
       style="position: absolute; top: 10px; left: 0; z-index: 10; width: 200px"
     />
-    {% endblock %} {% block navbar %}
+    {% endblock %}
+
+    {% block navbar %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
       <div class="container-fluid position-relative">
-        <a class="navbar-brand navbar-brand-custom" href="/">YSWS Template</a>
+        <a class="navbar-brand navbar-brand-custom" href="/">{{ site.home.title }}</a>
         <button
           class="navbar-toggler"
           type="button"
@@ -76,6 +97,7 @@
       </div>
     </nav>
     {% endblock %}
+
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
       integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"

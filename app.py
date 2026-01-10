@@ -7,6 +7,8 @@ import db
 import admin_db
 import slack
 from dotenv import load_dotenv
+import json
+from pathlib import Path
 
 load_dotenv()
 
@@ -20,9 +22,42 @@ TOKEN_URL = "https://auth.hackclub.com/oauth/token"
 JWKS_URL = "https://auth.hackclub.com/oauth/discovery/keys"
 USERINFO_URL = "https://auth.hackclub.com/oauth/userinfo"
 
+DEFAULT_SITE_CONFIG = {
+  "home": {
+    "title": "YSWS Template",
+    "description": "description of the YSWS"
+  },
+  "colors": {
+    "primary": "#3b82f6",
+    "primary_rgb": "59, 130, 246",
+    "primary_hover": "#60a5fa",
+    "bg": "#0b0f14",
+    "bg_secondary": "#141b26",
+    "bg_surface": "#171f2b",
+    "text": "#e5e7eb",
+    "text_strong": "#ffffff",
+    "hero_grad_rbg": "30, 64, 175"
+  }
+}
+
 ADMIN_EMAILS = os.getenv("ORGS", "").split(",")
 REVIEWER_EMAILS = os.getenv("ORGS", "").split(",")
 
+def load_site_config():
+    config_path = Path(__file__).parent / "config.json"
+    if not config_path.exists():
+        config_path.write_text(json.dumps(DEFAULT_SITE_CONFIG, indent=2))
+        print(f"Created default config at {config_path}")
+        return DEFAULT_SITE_CONFIG
+    try:
+        return json.loads(config_path.read_text())
+    except Exception as e:
+        print(f"Invalid config.json ({e}); recreating with default config.")
+        config_path.write_text(json.dumps(DEFAULT_SITE_CONFIG, indent=2))
+        return DEFAULT_SITE_CONFIG
+   
+SITE_CONFIG = load_site_config()
+    
 db.init_db()
 admin_db.init_db()
 
@@ -51,6 +86,10 @@ def get_current_user(clear_stale=True):
 @app.context_processor
 def inject_current_user():
     return {"current_user": get_current_user()}
+
+@app.context_processor
+def inject_site():
+    return {"site": SITE_CONFIG}
 
 
 # GET /
