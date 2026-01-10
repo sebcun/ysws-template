@@ -162,31 +162,38 @@ def get_projects():
 
     for proj in projects:
         project_id = proj["id"]
-        hackatime_project_names = (
-            proj["hackatime_project"] if proj["hackatime_project"] else ""
-        )
+        status = proj.get("status")
 
-        total_seconds = 0
-        if hackatime_project_names:
-            project_names = [
-                name.strip() for name in hackatime_project_names.split(",")
-            ]
-            for project_name in project_names:
-                for hp in hackatime_projects:
-                    if hp.get("name") == project_name:
-                        total_seconds += hp.get("total_seconds", 0)
-                        break
+        if status in ["Shipped", "Pending Review"]:
+            total_hours = proj["hours"] if proj["hours"] else 0
+            total_seconds = total_hours * 3600
+        else:
+            hackatime_project_names = (
+                proj["hackatime_project"] if proj["hackatime_project"] else ""
+            )
 
-        total_hours = total_seconds / 3600.0
+            total_seconds = 0
+            if hackatime_project_names:
+                project_names = [
+                    name.strip() for name in hackatime_project_names.split(",")
+                ]
+                for project_name in project_names:
+                    for hp in hackatime_projects:
+                        if hp.get("name") == project_name:
+                            total_seconds += hp.get("total_seconds", 0)
+                            break
+
+            total_hours = total_seconds / 3600.0
+
+            stored_hours = proj["hours"] if proj["hours"] else 0
+            if abs(stored_hours - total_hours) > 0.01:
+                db.update_project_hours(project_id, total_hours)
+                proj["hours"] = total_hours
+
         hours = int(total_seconds // 3600)
         minutes = int((total_seconds % 3600) // 60)
         seconds = int(total_seconds % 60)
         digital_format = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-        stored_hours = proj["hours"] if proj["hours"] else 0
-        if abs(stored_hours - total_hours) > 0.01:
-            db.update_project_hours(project_id, total_hours)
-            proj["hours"] = total_hours
 
         project_with_hours = dict(proj)
         project_with_hours["digital_hours"] = digital_format
@@ -254,6 +261,37 @@ def update_project(project_id):
 
     data = request.get_json()
 
+    hours_to_update = None
+
+    if data.get("status") == "Pending Review":
+        try:
+            slack_id = session["slack_id"]
+            ht_names = data.get("hackatime_project")
+            if ht_names is None:
+                curr = db.get_project_by_id(project_id)
+                if curr:
+                    ht_names = curr.get("hackatime_project", "")
+
+            if ht_names:
+                hackatime_response = requests.get(
+                    f"https://hackatime.hackclub.com/api/v1/users/{slack_id}/stats?limit=1000&features=projects&start_date=2025-12-16"
+                ).json()
+                hackatime_projects = hackatime_response.get("data", {}).get(
+                    "projects", []
+                )
+
+                project_names = [n.strip() for n in ht_names.split(",")]
+                total_seconds = 0
+                for project_name in project_names:
+                    for hp in hackatime_projects:
+                        if hp.get("name") == project_name:
+                            total_seconds += hp.get("total_seconds", 0)
+                            break
+
+                hours_to_update = total_seconds / 3600.0
+        except Exception as e:
+            print(f"Error syncing hours on submit: {e}")
+
     success = db.update_project(
         project_id=project_id,
         title=data.get("title"),
@@ -261,7 +299,7 @@ def update_project(project_id):
         demo_link=data.get("demo_link"),
         github_link=data.get("github_link"),
         hackatime_project=data.get("hackatime_project"),
-        hours=data.get("hours"),
+        hours=hours_to_update,
         status=data.get("status"),
     )
 
