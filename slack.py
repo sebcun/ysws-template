@@ -1,6 +1,9 @@
 import os
 import requests
 from typing import Optional, Dict, Any
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 
