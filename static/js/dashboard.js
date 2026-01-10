@@ -100,27 +100,55 @@ function populateHackatimeDropdowns() {
   createHackatimeList.innerHTML = "";
   hackatimeList.innerHTML = "";
 
+  const usedNames = new Set();
+  projects.forEach((p) => {
+    if (p.hackatime_project) {
+      p.hackatime_project.split(",").forEach((n) => {
+        const nm = n.trim();
+        if (nm) usedNames.add(nm);
+      });
+    }
+  });
+
   hackatimeProjects.forEach((proj) => {
     const name = proj.name || "Unnamed";
     const hours = proj.text || "0m";
+
+    const usedInOther = usedNames.has(name);
+    const createDisabledAttr = usedInOther ? "disabled" : "";
+    const createExtraClass = usedInOther ? " disabled-by-other" : "";
+    const createTitle = usedInOther
+      ? 'title="Already used in another of your projects"'
+      : "";
+
     const item = `
       <li>
         <a class="dropdown-item" href="#">
           <div class="form-check">
-            <input class="form-check-input hackatime-checkbox-create" type="checkbox" value="${name}" id="create_${name}"/>
-            <label class="form-check-label w-100" for="create_${name}">${name} (${hours})</label>
+            <input class="form-check-input hackatime-checkbox-create${createExtraClass}" type="checkbox" value="${name}" id="create_${name}" ${createDisabledAttr}/>
+            <label class="form-check-label w-100 ${
+              usedInOther ? "text-muted" : ""
+            }" for="create_${name}" ${createTitle}>${name} (${hours})</label>
           </div>
         </a>
       </li>
     `;
     createHackatimeList.innerHTML += item;
 
+    const editDisabledAttr = usedInOther ? "disabled" : "";
+    const editExtraClass = usedInOther ? " disabled-by-other" : "";
+    const editTitle = usedInOther
+      ? 'title="Already used in another of your projects"'
+      : "";
+
     const editItem = `
       <li>
         <a class="dropdown-item" href="#">
           <div class="form-check">
-            <input class="form-check-input hackatime-checkbox-edit" type="checkbox" value="${name}" id="edit_${name}"/>
-            <label class="form-check-label w-100" for="edit_${name}">${name} (${hours})</label>
+            <input class="form-check-input hackatime-checkbox-edit${editExtraClass}" type="checkbox" value="${name}" id="edit_${name}" ${editDisabledAttr}/>
+            <label class="form-check-label w-100 ${
+              usedInOther ? "text-muted" : ""
+            }" for="edit_${name}" ${editTitle}>${name} (${hours})</label>
           </div>
         </a>
       </li>
@@ -135,6 +163,7 @@ function populateHackatimeDropdowns() {
     });
     cb.closest(".dropdown-item").addEventListener("click", function (e) {
       e.stopPropagation();
+      if (cb.disabled) return;
       if (e.target !== cb) {
         cb.checked = !cb.checked;
         updateCreateSelectedText();
@@ -147,6 +176,7 @@ function populateHackatimeDropdowns() {
     cb.addEventListener("change", updateEditSelectedText);
     cb.closest(".dropdown-item").addEventListener("click", function (e) {
       e.stopPropagation();
+      if (cb.disabled) return;
       if (e.target !== cb) {
         cb.checked = !cb.checked;
         updateEditSelectedText();
@@ -308,9 +338,15 @@ function setHackatimeProjects(projectString) {
   const projectNames = projectString
     ? projectString.split(",").map((p) => p.trim())
     : [];
+
   document.querySelectorAll(".hackatime-checkbox-edit").forEach((cb) => {
+    if (projectNames.includes(cb.value)) {
+      cb.disabled = false;
+      cb.closest("label")?.classList?.remove("text-muted");
+    }
     cb.checked = projectNames.includes(cb.value);
   });
+
   updateEditSelectedText();
 }
 

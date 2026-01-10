@@ -221,6 +221,17 @@ def create_project():
 
     data = request.get_json()
 
+    hackatime_str = (data.get("hackatime_project") or "").strip()
+    desired_names = [n.strip() for n in hackatime_str.split(",") if n.strip()]
+    conflicts = db.check_hackatime_projects_available(session["user_id"], desired_names)
+    if conflicts:
+        return (
+            jsonify(
+                {"error": "Hackatime project(s) already linked", "conflicts": conflicts}
+            ),
+            400,
+        )
+
     project_id = db.create_project(
         user_id=session["user_id"],
         title=data.get("title"),
@@ -291,6 +302,23 @@ def update_project(project_id):
                 hours_to_update = total_seconds / 3600.0
         except Exception as e:
             print(f"Error syncing hours on submit: {e}")
+
+    if "hackatime_project" in data:
+        ht_str = (data.get("hackatime_project") or "").strip()
+        desired_names = [n.strip() for n in ht_str.split(",") if n.strip()]
+        conflicts = db.check_hackatime_projects_available(
+            session["user_id"], desired_names, exclude_project_id=project_id
+        )
+        if conflicts:
+            return (
+                jsonify(
+                    {
+                        "error": "Hackatime project(s) already linked",
+                        "conflicts": conflicts,
+                    }
+                ),
+                400,
+            )
 
     success = db.update_project(
         project_id=project_id,

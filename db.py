@@ -325,3 +325,35 @@ def get_project_stats() -> Dict[str, Any]:
             "total_hours": total_hours,
             "status_counts": status_counts,
         }
+
+
+def get_used_hackatime_projects(user_id: int, exclude_project_id: int = None) -> set:
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        if exclude_project_id:
+            c.execute(
+                "SELECT hackatime_project FROM projects WHERE user_id = ? AND id != ?",
+                (user_id, exclude_project_id),
+            )
+        else:
+            c.execute(
+                "SELECT hackatime_project FROM projects WHERE user_id = ?", (user_id,)
+            )
+        rows = c.fetchall()
+        used = set()
+        for row in rows:
+            val = row["hackatime_project"]
+            if val:
+                for name in val.split(","):
+                    nm = name.strip()
+                    if nm:
+                        used.add(nm)
+        return used
+
+
+def check_hackatime_projects_available(
+    used_id: int, desired_names: list, exclude_project_id: int = None
+) -> list:
+    used = get_used_hackatime_projects(used_id, exclude_project_id)
+    conflicts = [n for n in desired_names if n in used]
+    return conflicts
