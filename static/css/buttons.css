@@ -25,3 +25,7 @@
 .btn-lg.same-size {
   min-width: 200px;
 }
+
+.vh100 {
+  min-height: 98% !important;
+}

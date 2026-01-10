@@ -172,53 +172,87 @@ def reviewer():
 # GET /api/projects
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
-    user = get_current_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
+    if request.args.get("me"):
+        user = get_current_user()
+        if not user:
+            return jsonify({"error": "Unauthorized"}), 401
 
-    slack_id = user.get("slack_id")
-    hackatime_response = requests.get(
-        f"https://hackatime.hackclub.com/api/v1/users/{slack_id}/stats?limit=1000&features=projects&start_date=2025-12-16"
-    ).json()
-    projects = db.get_user_projects(user["id"])
-    hackatime_projects = hackatime_response.get("data", {}).get("projects", [])
-    projects_with_hours = []
+        slack_id = user.get("slack_id")
+        hackatime_response = requests.get(
+            f"https://hackatime.hackclub.com/api/v1/users/{slack_id}/stats?limit=1000&features=projects&start_date=2025-12-16"
+        ).json()
+        projects = db.get_user_projects(user["id"])
+        hackatime_projects = hackatime_response.get("data", {}).get("projects", [])
+        projects_with_hours = []
 
+        for proj in projects:
+            project_id = proj["id"]
+            status = proj.get("status")
+            if status in ["Shipped", "Pending Review"]:
+                total_hours = proj["hours"] if proj["hours"] else 0
+                total_seconds = total_hours * 3600
+            else:
+                hackatime_project_names = (
+                    proj["hackatime_project"] if proj["hackatime_project"] else ""
+                )
+                total_seconds = 0
+                if hackatime_project_names:
+                    project_names = [
+                        name.strip() for name in hackatime_project_names.split(",")
+                    ]
+                    for project_name in project_names:
+                        for hp in hackatime_projects:
+                            if hp.get("name") == project_name:
+                                total_seconds += hp.get("total_seconds", 0)
+                                break
+                total_hours = total_seconds / 3600.0
+                stored_hours = proj["hours"] if proj["hours"] else 0
+                if abs(stored_hours - total_hours) > 0.01:
+                    db.update_project_hours(project_id, total_hours)
+                    proj["hours"] = total_hours
+
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            seconds = int(total_seconds % 60)
+            digital_format = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+            project_with_hours = dict(proj)
+            project_with_hours["digital_hours"] = digital_format
+            projects_with_hours.append(project_with_hours)
+
+        return jsonify({"projects": projects_with_hours})
+
+    status_q = request.args.get("status")
+    author_q = request.args.get("author")
+
+    if status_q:
+        key = "".join(ch for ch in status_q.lower() if ch.isalnum())
+        status_map = {
+            "building": "Building",
+            "shipped": "Shipped",
+            "pending": "Pending Review",
+            "pendingreview": "Pending Review",
+        }
+        if key not in status_map:
+            return jsonify({"error": "Invalid status filter"}), 400
+        status_q = status_map[key]
+
+    projects = db.get_all_projects(status_q) if status_q else db.get_all_projects()
+
+    if author_q:
+        projects = [p for p in projects if p.get("slack_id") == author_q]
+
+    public_projects = []
     for proj in projects:
-        project_id = proj["id"]
-        status = proj.get("status")
-        if status in ["Shipped", "Pending Review"]:
-            total_hours = proj["hours"] if proj["hours"] else 0
-            total_seconds = total_hours * 3600
-        else:
-            hackatime_project_names = (
-                proj["hackatime_project"] if proj["hackatime_project"] else ""
-            )
-            total_seconds = 0
-            if hackatime_project_names:
-                project_names = [
-                    name.strip() for name in hackatime_project_names.split(",")
-                ]
-                for project_name in project_names:
-                    for hp in hackatime_projects:
-                        if hp.get("name") == project_name:
-                            total_seconds += hp.get("total_seconds", 0)
-                            break
-            total_hours = total_seconds / 3600.0
-            stored_hours = proj["hours"] if proj["hours"] else 0
-            if abs(stored_hours - total_hours) > 0.01:
-                db.update_project_hours(project_id, total_hours)
-                proj["hours"] = total_hours
-
+        proj_public = dict(proj)
+        proj_public.pop("nickname", None)
+        proj_public.pop("email", None)
+        total_seconds = int((proj_public.get("hours") or 0) * 3600)
         hours = int(total_seconds // 3600)
         minutes = int((total_seconds % 3600) // 60)
         seconds = int(total_seconds % 60)
-        digital_format = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        project_with_hours = dict(proj)
-        project_with_hours["digital_hours"] = digital_format
-        projects_with_hours.append(project_with_hours)
-
-    return jsonify({"projects": projects_with_hours})
+        proj_public["digital_hours"] = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        public_projects.append(proj_public)
+    return jsonify({"projects": public_projects})
 
 
 # GET /api/hackatime

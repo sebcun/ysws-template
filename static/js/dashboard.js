@@ -79,7 +79,7 @@ function formatHours(hours) {
 
 async function loadProjects() {
   try {
-    const projectsResponse = await fetch("/api/projects");
+    const projectsResponse = await fetch("/api/projects?me=true");
     const projectsData = await projectsResponse.json();
     projects = projectsData.projects || [];
 
