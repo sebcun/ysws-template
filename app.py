@@ -533,23 +533,6 @@ def get_user_profile():
     )
 
 
-# PUT /api/user/profile
-@app.route("/api/user/profile", methods=["PUT"])
-def update_user_profile():
-    user = get_current_user()
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    data = request.get_json()
-    success = db.update_user(
-        user_id=user["id"], nickname=data.get("nickname"), slack_id=data.get("slack_id")
-    )
-
-    if success and data.get("nickname"):
-        session["nickname"] = data.get("nickname")
-    return jsonify({"success": success})
-
-
 # GET /api/faqs
 @app.route("/api/faqs", methods=["GET"])
 def get_faqs():
