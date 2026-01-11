@@ -1,5 +1,4 @@
-{% extends "base.html" %} {% block title %}Reviewer - {{ site.home.title }}{%
-endblock %} {% block head %}
+{% extends "base.html" %} {% block title %}Reviewer - {{ site.home.title }}{% endblock %} {% block head %}
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/dashboard.css') }}"
@@ -16,8 +15,7 @@ endblock %} {% block head %}
     border: 1px solid #dee2e6;
   }
 </style>
-{% endblock %} {% block navbar_balance %} {% endblock %} {% block hackclub_flag
-%} {% endblock %} {% block content %}
+{% endblock %} {% block navbar_balance %} {% endblock %} {% block hackclub_flag %} {% endblock %} {% block content %}
 
 <div class="container py-5 vh100">
   <div class="mb-5">
@@ -126,6 +124,14 @@ endblock %} {% block head %}
           <h6 class="text-muted" id="projectModalHours"></h6>
         </div>
         <div class="mb-3">
+          <label class="form-label fw-bold">Status</label>
+          <select class="form-select form-select-sm" id="statusSelect" disabled>
+            <option value="Building">Building</option>
+            <option value="Pending Review">Pending</option>
+            <option value="Shipped">Shipped</option>
+          </select>
+        </div>
+        <div class="mb-3">
           <label class="form-label fw-bold">Description</label>
           <p id="projectDescText"></p>
         </div>
@@ -144,7 +150,9 @@ endblock %} {% block head %}
             class="form-control"
             id="hackatimeInput"
             readonly
+            placeholder="e.g., Project A, Project B"
           />
+          <div class="form-text">Enter Hackatime project names separated by commas (stored as a comma-separated string).</div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Creator</label>
@@ -154,9 +162,14 @@ endblock %} {% block head %}
         </div>
       </div>
       <div class="modal-footer" id="modalFooter">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-          Close
-        </button>
+
+        {% if current_user.is_admin %}
+        <button type="button" class="btn btn-outline-secondary" id="editBtn">Edit</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+        <button type="button" class="btn btn-primary" id="saveBtn" style="display: none">Save</button>
+        <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none">Cancel</button>
+        {% endif %}
+
         <button
           type="button"
           class="btn btn-success"

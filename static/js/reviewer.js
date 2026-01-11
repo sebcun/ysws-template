@@ -26,9 +26,16 @@ const projectDescText = document.getElementById("projectDescText");
 const demoInput = document.getElementById("demoInput");
 const githubInput = document.getElementById("githubInput");
 const hackatimeInput = document.getElementById("hackatimeInput");
+const statusSelect = document.getElementById("statusSelect");
 const creatorLink = document.getElementById("creatorLink");
 const approveBtn = document.getElementById("approveBtn");
 const rejectBtn = document.getElementById("rejectBtn");
+const editBtn = document.getElementById("editBtn");
+const deleteBtn = document.getElementById("deleteBtn");
+const saveBtn = document.getElementById("saveBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+
+let _originalValues = {};
 
 function getStatusBadge(status) {
   const statusMap = {
@@ -141,9 +148,7 @@ function renderGrid(grid, projectList) {
           <p class="text-muted small mb-2">By: <a href="https://hackclub.enterprise.slack.com/team/${slackId}" target="_blank">${nickname}</a></p>
           <div class="d-flex justify-content-between align-items-center mt-auto">
             <h6 class="text-muted mb-0">${formatHours(hours)}</h6>
-            <button type="button" class="btn ${buttonClass} btn-sm px-3" data-project-id="${
-      project.id
-    }">
+            <button type="button" class="btn ${buttonClass} btn-sm px-3" data-project-id="${project.id}">
               ${buttonText}
             </button>
           </div>
@@ -179,6 +184,10 @@ function openProjectModal(project) {
   demoInput.value = demoLink;
   githubInput.value = githubLink;
   hackatimeInput.value = hackatimeProject;
+  if (statusSelect) {
+    statusSelect.value = status;
+    statusSelect.disabled = true;
+  }
   creatorLink.textContent = nickname;
   creatorLink.href = `https://hackclub.enterprise.slack.com/team/${slackId}`;
 
@@ -188,6 +197,16 @@ function openProjectModal(project) {
   } else {
     approveBtn.style.display = "none";
     rejectBtn.style.display = "none";
+  }
+
+  if (editBtn) {
+    editBtn.style.display = "";
+    deleteBtn.style.display = "";
+    saveBtn.style.display = "none";
+    cancelBtn.style.display = "none";
+    demoInput.readOnly = true;
+    githubInput.readOnly = true;
+    hackatimeInput.readOnly = true;
   }
 
   projectModal.show();
@@ -282,12 +301,115 @@ function setupSearch(input, clearBtn) {
   });
 }
 
+function handleEdit() {
+  if (!currentProject) return;
+  _originalValues = {
+    demo: demoInput.value,
+    github: githubInput.value,
+    hackatime: hackatimeInput.value,
+    status: statusSelect ? statusSelect.value : currentProject.status,
+  };
+  demoInput.readOnly = false;
+  githubInput.readOnly = false;
+  hackatimeInput.readOnly = false;
+  if (statusSelect) statusSelect.disabled = false;
+  editBtn.style.display = "none";
+  deleteBtn.style.display = "none";
+  saveBtn.style.display = "";
+  cancelBtn.style.display = "";
+  if (approveBtn) approveBtn.style.display = "none";
+  if (rejectBtn) rejectBtn.style.display = "none";
+}
+
+function handleCancelEdit() {
+  demoInput.value = _originalValues.demo || "";
+  githubInput.value = _originalValues.github || "";
+  hackatimeInput.value = _originalValues.hackatime || "";
+  if (statusSelect) {
+    statusSelect.value = _originalValues.status || currentProject.status;
+    statusSelect.disabled = true;
+  }
+  demoInput.readOnly = true;
+  githubInput.readOnly = true;
+  hackatimeInput.readOnly = true;
+  editBtn.style.display = "";
+  deleteBtn.style.display = "";
+  saveBtn.style.display = "none";
+  cancelBtn.style.display = "none";
+  if (currentProject && currentProject.status === "Pending Review") {
+    approveBtn.style.display = "";
+    rejectBtn.style.display = "";
+  } else {
+    if (approveBtn) approveBtn.style.display = "none";
+    if (rejectBtn) rejectBtn.style.display = "none";
+  }
+}
+
+async function handleSaveEdit() {
+  if (!currentProject) return;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  try {
+    const body = {
+      demo_link: demoInput.value.trim(),
+      github_link: githubInput.value.trim(),
+      hackatime_project: hackatimeInput.value.trim(),
+    };
+    if (statusSelect) body.status = statusSelect.value;
+    const res = await fetch(`/api/projects/${currentProject.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      projectModal.hide();
+      await loadProjects();
+    } else {
+      alert((data && data.error) || "Failed to save changes" + (data && data.conflicts ? "\nConflicts: " + data.conflicts.join(", ") : ""));
+    }
+  } catch (e) {
+    console.error("Failed to save:", e);
+    alert("Failed to save changes");
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save";
+  }
+}
+
+async function handleDelete() {
+  if (!currentProject) return;
+  if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
+  deleteBtn.disabled = true;
+  deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+  try {
+    const res = await fetch(`/api/projects/${currentProject.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.ok) {
+      projectModal.hide();
+      await loadProjects();
+    } else {
+      alert((data && data.error) || "Failed to delete project");
+    }
+  } catch (e) {
+    console.error("Failed to delete:", e);
+    alert("Failed to delete project");
+  } finally {
+    deleteBtn.disabled = false;
+    deleteBtn.textContent = "Delete";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   setupSearch(pendingSearchInput, pendingSearchClear);
   setupSearch(shippedSearchInput, shippedSearchClear);
   setupSearch(buildingSearchInput, buildingSearchClear);
 
   loadProjects();
-  approveBtn.addEventListener("click", handleApprove);
-  rejectBtn.addEventListener("click", handleReject);
+  if (approveBtn) approveBtn.addEventListener("click", handleApprove);
+  if (rejectBtn) rejectBtn.addEventListener("click", handleReject);
+  if (editBtn) editBtn.addEventListener("click", handleEdit);
+  if (saveBtn) saveBtn.addEventListener("click", handleSaveEdit);
+  if (cancelBtn) cancelBtn.addEventListener("click", handleCancelEdit);
+  if (deleteBtn) deleteBtn.addEventListener("click", handleDelete);
 });

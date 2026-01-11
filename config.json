@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "rsvp": "",
+  "slack_link": "https://hackclub.enterprise.slack.com/archives/C09U5BFU3GA",
+  "github": "https://github.com/sebcun/homelab",
+  "home": {
+    "title": "HomeLab",
+    "description": "Welcome to HomeLab. A YSWS where you ship projects related to having a self hosted server at home, and we ship things to help you create your own setup (or update a setup you already have!)"
+  },
+  "colors": {
+    "primary": "#3b82f6",
+    "primary_rgb": "59, 130, 246",
+    "primary_hover": "#60a5fa",
+    "bg": "#0b0f14",
+    "bg_secondary": "#141b26",
+    "bg_surface": "#171f2b",
+    "text": "#e5e7eb",
+    "text_strong": "#ffffff",
+    "hero_grad_rbg": "30, 64, 175"
+  },
+  "admin_slacks": ["U04QD71QWS0", "U0971C3C44D"],
+  "reviewer_slacks": ["U04QD71QWS0", "U0971C3C44D"],
+  "start_date": "2025-12-16",
+  "end_date": ""
+}
