@@ -22,6 +22,7 @@ TOKEN_URL = "https://auth.hackclub.com/oauth/token"
 JWKS_URL = "https://auth.hackclub.com/oauth/discovery/keys"
 USERINFO_URL = "https://auth.hackclub.com/oauth/userinfo"
 
+# Load Config
 DEFAULT_SITE_CONFIG = {
   "home": {
     "title": "YSWS Template",
@@ -37,11 +38,10 @@ DEFAULT_SITE_CONFIG = {
     "text": "#e5e7eb",
     "text_strong": "#ffffff",
     "hero_grad_rbg": "30, 64, 175"
-  }
+  },
+  "admin_slacks": [],
+  "reviewer_slacks": []
 }
-
-ADMIN_EMAILS = os.getenv("ORGS", "").split(",")
-REVIEWER_EMAILS = os.getenv("ORGS", "").split(",")
 
 def load_site_config():
     config_path = Path(__file__).parent / "config.json"
@@ -57,11 +57,12 @@ def load_site_config():
         return DEFAULT_SITE_CONFIG
    
 SITE_CONFIG = load_site_config()
-    
+
+# Load DBs
 db.init_db()
 admin_db.init_db()
 
-
+# get user including admin/reviewer status
 def get_current_user(clear_stale=True):
     user_id = session.get("user_id")
     if not user_id:
@@ -74,9 +75,9 @@ def get_current_user(clear_stale=True):
         session.pop("nickname", None)
         return None
     is_admin = bool(
-        (user.get("email") in ADMIN_EMAILS) or (user.get("slack_id") in ADMIN_EMAILS)
+        (user.get("email") in SITE_CONFIG['admin_slacks']) or (user.get("slack_id") in SITE_CONFIG['admin_slacks'])
     )
-    is_reviewer = bool((user.get("slack_id") in REVIEWER_EMAILS) or is_admin)
+    is_reviewer = bool((user.get("slack_id") in SITE_CONFIG['reviewer_slacks']) or is_admin)
     user_with_roles = dict(user)
     user_with_roles["is_admin"] = is_admin
     user_with_roles["is_reviewer"] = is_reviewer
