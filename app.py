@@ -691,6 +691,34 @@ def reject_project(project_id):
 
     return jsonify({"success": success})
 
+# POST /api/reviewer/projects/<id>/pay
+@app.route("/api/reviewer/projects/<int:project_id>/pay", methods=["POST"])
+def pay_project(project_id):
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    if not user["is_admin"]:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    project = db.get_project_by_id(project_id)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+    if project.get("status") != "Shipped":
+        return jsonify({"error": "Can only pay hours for Shipped projects"}), 400
+
+    data = request.get_json() or {}
+    try:
+        amount = float(data.get("amount", 0))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid amount"}), 400
+    if amount < 0:
+        return jsonify({"error": "Amount must be >= 0"}), 400
+
+    success = db.set_project_paid_hours(project_id, amount)
+    if success:
+        return jsonify({"success": True, "paid": amount})
+    return jsonify({"success": False}), 500
+                                                                                                                    
 
 if __name__ == "__main__":
     app.run(debug=True)

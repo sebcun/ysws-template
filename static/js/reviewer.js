@@ -35,6 +35,11 @@ const deleteBtn = document.getElementById("deleteBtn");
 const saveBtn = document.getElementById("saveBtn");
 const cancelBtn = document.getElementById("cancelBtn");
 
+const paySection = document.getElementById("paySection");
+const payInput = document.getElementById("payInput");
+const payBtn = document.getElementById("payBtn");
+const payHelper = document.getElementById("payHelper");
+
 let _originalValues = {};
 
 function getStatusBadge(status) {
@@ -67,6 +72,10 @@ function formatHours(hours) {
     return `${h}h ${m}m`;
   }
   return "0h 0m";
+}
+
+function payoutCap(hours) {
+  return Math.floor(Number(hours || 0) * 2) / 2;
 }
 
 async function loadProjects() {
@@ -148,7 +157,9 @@ function renderGrid(grid, projectList) {
           <p class="text-muted small mb-2">By: <a href="https://hackclub.enterprise.slack.com/team/${slackId}" target="_blank">${nickname}</a></p>
           <div class="d-flex justify-content-between align-items-center mt-auto">
             <h6 class="text-muted mb-0">${formatHours(hours)}</h6>
-            <button type="button" class="btn ${buttonClass} btn-sm px-3" data-project-id="${project.id}">
+            <button type="button" class="btn ${buttonClass} btn-sm px-3" data-project-id="${
+      project.id
+    }">
               ${buttonText}
             </button>
           </div>
@@ -207,6 +218,29 @@ function openProjectModal(project) {
     demoInput.readOnly = true;
     githubInput.readOnly = true;
     hackatimeInput.readOnly = true;
+  }
+
+  if (paySection) {
+    const projectHours = Number(hours || 0);
+    const cap = payoutCap(projectHours);
+    const paid = Number(project.paid_hours || 0);
+    if (status === "Shipped" && paid < cap) {
+      const defaultAmount = paid ? paid : cap;
+      payInput.value = Number.isInteger(defaultAmount)
+        ? defaultAmount.toFixed(0)
+        : defaultAmount.toFixed(1);
+      payInput.disabled = false;
+      if (payBtn) payBtn.disabled = false;
+      paySection.style.display = "";
+      payHelper.textContent = `Cap: ${cap.toFixed(
+        cap % 1 === 0 ? 0 : 1
+      )} — step 0.5`;
+    } else {
+      payInput.value = "";
+      payInput.disabled = true;
+      if (payBtn) payBtn.disabled = true;
+      paySection.style.display = "none";
+    }
   }
 
   projectModal.show();
@@ -348,7 +382,8 @@ function handleCancelEdit() {
 async function handleSaveEdit() {
   if (!currentProject) return;
   saveBtn.disabled = true;
-  saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  saveBtn.innerHTML =
+    '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
   try {
     const body = {
       demo_link: demoInput.value.trim(),
@@ -366,7 +401,13 @@ async function handleSaveEdit() {
       projectModal.hide();
       await loadProjects();
     } else {
-      alert((data && data.error) || "Failed to save changes" + (data && data.conflicts ? "\nConflicts: " + data.conflicts.join(", ") : ""));
+      alert(
+        (data && data.error) ||
+          "Failed to save changes" +
+            (data && data.conflicts
+              ? "\nConflicts: " + data.conflicts.join(", ")
+              : "")
+      );
     }
   } catch (e) {
     console.error("Failed to save:", e);
@@ -379,11 +420,19 @@ async function handleSaveEdit() {
 
 async function handleDelete() {
   if (!currentProject) return;
-  if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
+  if (
+    !confirm(
+      "Are you sure you want to delete this project? This cannot be undone."
+    )
+  )
+    return;
   deleteBtn.disabled = true;
-  deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+  deleteBtn.innerHTML =
+    '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
   try {
-    const res = await fetch(`/api/projects/${currentProject.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/projects/${currentProject.id}`, {
+      method: "DELETE",
+    });
     const data = await res.json();
     if (res.ok) {
       projectModal.hide();
@@ -400,6 +449,48 @@ async function handleDelete() {
   }
 }
 
+async function handlePay() {
+  if (!currentProject) return;
+  const amt = parseFloat(payInput.value);
+  if (isNaN(amt) || amt < 0) {
+    alert("Invalid amount");
+    return;
+  }
+  const projectHours = Number(currentProject.hours || 0);
+  const cap = payoutCap(projectHours);
+  if (amt > cap) {
+    alert("Amount cannot exceed payout cap");
+    return;
+  }
+  if (Math.abs(amt * 2 - Math.round(amt * 2)) > 1e-8) {
+    alert("Amount must be a multiple of 0.5");
+    return;
+  }
+  payBtn.disabled = true;
+  payBtn.innerHTML =
+    '<span class="spinner-border spinner-border-sm me-2"></span>Paying...';
+  try {
+    const res = await fetch(`/api/reviewer/projects/${currentProject.id}/pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: amt }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      projectModal.hide();
+      await loadProjects();
+    } else {
+      alert((data && data.error) || "Failed to pay hours");
+    }
+  } catch (e) {
+    console.error("Failed to pay:", e);
+    alert("Failed to pay hours");
+  } finally {
+    payBtn.disabled = false;
+    payBtn.textContent = "Pay";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   setupSearch(pendingSearchInput, pendingSearchClear);
   setupSearch(shippedSearchInput, shippedSearchClear);
@@ -412,4 +503,5 @@ document.addEventListener("DOMContentLoaded", function () {
   if (saveBtn) saveBtn.addEventListener("click", handleSaveEdit);
   if (cancelBtn) cancelBtn.addEventListener("click", handleCancelEdit);
   if (deleteBtn) deleteBtn.addEventListener("click", handleDelete);
+  if (payBtn) payBtn.addEventListener("click", handlePay);
 });

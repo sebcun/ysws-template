@@ -1,4 +1,5 @@
-{% extends "base.html" %} {% block title %}Reviewer - {{ site.home.title }}{% endblock %} {% block head %}
+{% extends "base.html" %} {% block title %}Reviewer - {{ site.home.title }}{%
+endblock %} {% block head %}
 <link
   rel="stylesheet"
   href="{{ url_for('static', filename='css/dashboard.css') }}"
@@ -15,7 +16,8 @@
     border: 1px solid #dee2e6;
   }
 </style>
-{% endblock %} {% block navbar_balance %} {% endblock %} {% block hackclub_flag %} {% endblock %} {% block content %}
+{% endblock %} {% block navbar_balance %} {% endblock %} {% block hackclub_flag
+%} {% endblock %} {% block content %}
 
 <div class="container py-5 vh100">
   <div class="mb-5">
@@ -152,7 +154,10 @@
             readonly
             placeholder="e.g., Project A, Project B"
           />
-          <div class="form-text">Enter Hackatime project names separated by commas (stored as a comma-separated string).</div>
+          <div class="form-text">
+            Enter Hackatime project names separated by commas (stored as a
+            comma-separated string).
+          </div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-bold">Creator</label>
@@ -161,31 +166,75 @@
           </p>
         </div>
       </div>
-      <div class="modal-footer" id="modalFooter">
-
-        {% if current_user.is_admin %}
-        <button type="button" class="btn btn-outline-secondary" id="editBtn">Edit</button>
-        <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
-        <button type="button" class="btn btn-primary" id="saveBtn" style="display: none">Save</button>
-        <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none">Cancel</button>
-        {% endif %}
-
-        <button
-          type="button"
-          class="btn btn-success"
-          id="approveBtn"
-          style="display: none"
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          class="btn btn-danger"
-          id="rejectBtn"
-          style="display: none"
-        >
-          Reject
-        </button>
+      <div
+        class="modal-footer d-flex justify-content-between align-items-center"
+        id="modalFooter"
+      >
+        <div id="modalFooterLeft" class="d-flex align-items-center">
+          {% if current_user.is_admin %}
+          <div class="me-3" id="paySection" style="display: none">
+            <label class="form-label fw-bold mb-1">Pay Hours</label>
+            <div class="input-group input-group-sm">
+              <input
+                type="number"
+                class="form-control"
+                id="payInput"
+                step="0.5"
+                min="0"
+              />
+              <button type="button" class="btn btn-outline-primary" id="payBtn">
+                Pay
+              </button>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        <div id="modalFooterRight" class="d-flex align-items-center">
+          {% if current_user.is_admin %}
+          <button
+            type="button"
+            class="btn btn-outline-secondary me-2"
+            id="editBtn"
+          >
+            Edit
+          </button>
+          <button type="button" class="btn btn-danger me-2" id="deleteBtn">
+            Delete
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary me-2"
+            id="saveBtn"
+            style="display: none"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary me-2"
+            id="cancelBtn"
+            style="display: none"
+          >
+            Cancel
+          </button>
+          {% endif %}
+          <button
+            type="button"
+            class="btn btn-success me-2"
+            id="approveBtn"
+            style="display: none"
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger"
+            id="rejectBtn"
+            style="display: none"
+          >
+            Reject
+          </button>
+        </div>
       </div>
     </div>
   </div>
