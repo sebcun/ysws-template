@@ -10,6 +10,48 @@ const addRewardModalEl = document.getElementById('addRewardModal');
 const addFaqModal = new bootstrap.Modal(addFaqModalEl);
 const addRewardModal = new bootstrap.Modal(addRewardModalEl);
 
+function sanitizeUrl(url) {
+  url = (url || '').trim();
+  if (!/^(https?:\/\/|mailto:)/i.test(url)) return null;
+  try {
+    return encodeURI(url).replace(/"/g, '&quot;');
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderSimpleMarkdown(text) {
+  if (!text) return '';
+  let out = '';
+  let lastIndex = 0;
+  const regex = /\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|~(.+?)~/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    out += escapeHtml(text.slice(lastIndex, match.index)).replace(/\n/g, '<br>');
+    if (match[1] && match[2]) {
+      const label = match[1];
+      const url = match[2];
+      const safeUrl = sanitizeUrl(url);
+      if (safeUrl) {
+        out += `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+      } else {
+        out += escapeHtml(match[0]);
+      }
+    } else if (match[3]) {
+      out += `<strong>${escapeHtml(match[3])}</strong>`;
+    } else if (match[4]) {
+      out += `<em>${escapeHtml(match[4])}</em>`;
+    } else if (match[5]) {
+      out += `<u>${escapeHtml(match[5])}</u>`;
+    } else if (match[6]) {
+      out += `<del>${escapeHtml(match[6])}</del>`;
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  out += escapeHtml(text.slice(lastIndex)).replace(/\n/g, '<br>');
+  return out;
+}
+
 async function loadFaqs() {
   try {
     const response = await fetch('/api/faqs');
@@ -51,7 +93,7 @@ function renderFaqs() {
           <div class="d-flex justify-content-between align-items-start">
             <div>
               <h5 class="card-title fw-bold mb-2">${escapeHtml(faq.question)}</h5>
-              <p class="card-text text-muted">${escapeHtml(faq.answer)}</p>
+              <p class="card-text text-muted">${renderSimpleMarkdown(faq.answer)}</p>
             </div>
             <button class="btn btn-outline-danger btn-sm delete-btn ms-3" onclick="deleteFaq(${faq.id})">
               <i class="bi bi-trash"></i>

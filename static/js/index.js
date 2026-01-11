@@ -17,6 +17,56 @@ const setTrackNoScroll = (track, on) => {
   }
 };
 
+function escapeHtmlRaw(str) {
+  const d = document.createElement('div')
+  d.textContent = str;
+  return d.innerHTML
+}
+
+
+function sanitizeUrl(url) {
+  url = (url || '').trim();
+  if (!/^(https?:\/\/|mailto:)/i.test(url)) return null;
+  try {
+    return encodeURI(url).replace(/"/g, '&quot;');
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderSimpleMarkdown(text) {
+  if (!text) return '';
+  let out = '';
+  let lastIndex = 0;
+  const regex = /\[([^\]]+)\]\(([^)]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_|~(.+?)~/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    out += escapeHtmlRaw(text.slice(lastIndex, match.index)).replace(/\n/g, '<br>');
+    if (match[1] && match[2]) {
+      const label = match[1];
+      const url = match[2];
+      const safeUrl = sanitizeUrl(url);
+      if (safeUrl) {
+        out += `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${escapeHtmlRaw(label)}</a>`;
+      } else {
+        out += escapeHtmlRaw(match[0]);
+      }
+    } else if (match[3]) {
+      out += `<strong>${escapeHtmlRaw(match[3])}</strong>`;
+    } else if (match[4]) {
+      out += `<em>${escapeHtmlRaw(match[4])}</em>`;
+    } else if (match[5]) {
+      out += `<u>${escapeHtmlRaw(match[5])}</u>`;
+    } else if (match[6]) {
+      out += `<del>${escapeHtmlRaw(match[6])}</del>`;
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  out += escapeHtmlRaw(text.slice(lastIndex)).replace(/\n/g, '<br>');
+  return out;
+}
+
+
 async function loadRewards() {
   const carouselTrack = document.getElementById("rewardsCarousel");
 
@@ -141,9 +191,7 @@ async function loadFAQs() {
                         aria-labelledby="heading${index}"
                         data-bs-parent="#faqAccordion"
                     >
-                        <div class="accordion-body text-muted">${
-                          faq.answer
-                        }</div>
+                        <div class="accordion-body text-muted">${renderSimpleMarkdown(faq.answer)}</div>
                     </div>
                 </div>
             `
@@ -254,6 +302,7 @@ async function loadShipped() {
     setTrackNoScroll(carouselTrack, true);
   }
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
   loadRewards();
