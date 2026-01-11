@@ -23,7 +23,7 @@ block head %}
 >
   <div class="col-lg-8 mx-auto">
     <h1 class="display-1 fw-bold mb-3">{{ site.home.title }}</h1>
-    <p class="lead mb-4">description of the YSWS</p>
+    <p class="lead mb-4">{{ site.home.description }}</p>
     <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
       <a
         href="#rewards"
@@ -69,7 +69,7 @@ block head %}
 <footer class="py-4 bg-light text-center">
   <div class="container">
     <span class="text-muted"
-      >This website is <a href="https://github.com">Open source!</a></span
+      >This website is <a href="{{ site.github }}">Open source!</a></span
     >
   </div>
 </footer>

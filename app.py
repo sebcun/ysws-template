@@ -26,6 +26,8 @@ USERINFO_URL = "https://auth.hackclub.com/oauth/userinfo"
 DEFAULT_SITE_CONFIG = {
   "active": False,
   "rsvp": "",
+  "slack_link": "",
+  "github": "",
   "home": {
     "title": "YSWS Template",
     "description": "description of the YSWS"

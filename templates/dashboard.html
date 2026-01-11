@@ -27,9 +27,19 @@ block head %}
 <div class="container py-5 vh-100">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Projects</h1>
-    <button class="btn btn-primary" id="createProjectBtn">
-      <i class="bi bi-plus-lg me-2"></i>Create Project
-    </button>
+    <div class="d-flex align-items-center">
+      <a
+        href="{{ site.slack_link }}"
+        id="needHelpBtn"
+        class="btn btn-outline-secondary me-2"
+        target="_blank"
+      >
+        <i class="bi bi-question-circle me-1"></i>Need help?
+      </a>
+      <button class="btn btn-primary" id="createProjectBtn">
+        <i class="bi bi-plus-lg me-2"></i>Create Project
+      </button>
+    </div>
   </div>
 
   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="projectsGrid">
@@ -377,7 +387,7 @@ block head %}
 <footer class="py-4 bg-light text-center">
   <div class="container">
     <span class="text-muted"
-      >This website is <a href="https://github.com">Open source!</a></span
+      >This website is <a href="{{ site.github }}">Open source!</a></span
     >
   </div>
 </footer>
