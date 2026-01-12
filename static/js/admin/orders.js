@@ -1,9 +1,17 @@
 let orders = [];
 let rewards = {};
 let currentOrder = null;
-const orderList = document.getElementById("orderList");
-const orderSearchInput = document.getElementById("orderSearchInput");
-const orderSearchClear = document.getElementById("orderSearchClear");
+
+const pendingOrderList = document.getElementById("pendingOrderList");
+const fulfilledOrderList = document.getElementById("fulfilledOrderList");
+
+const pendingSearchInput = document.getElementById("pendingSearchInput");
+const pendingSearchClear = document.getElementById("pendingSearchClear");
+const fulfilledSearchInput = document.getElementById("fulfilledSearchInput");
+const fulfilledSearchClear = document.getElementById("fulfilledSearchClear");
+
+const pendingCount = document.getElementById("pendingCount");
+const fulfilledCount = document.getElementById("fulfilledCount");
 
 const orderModalEl = document.getElementById("orderModal");
 const orderModal = new bootstrap.Modal(orderModalEl);
@@ -59,18 +67,15 @@ function formatHours(val) {
   return `${parseFloat(n.toFixed(2))}h`;
 }
 
-function renderOrders() {
-  const term = (orderSearchInput.value || "").trim();
-  const filtered = orders.filter((o) => matchesSearch(o, term));
-
-  orderList.innerHTML = "";
-  if (filtered.length === 0) {
-    orderList.innerHTML =
+function renderList(container, list) {
+  container.innerHTML = "";
+  if (list.length === 0) {
+    container.innerHTML =
       '<div class="col-12 text-center py-3"><p class="text-muted">No orders</p></div>';
     return;
   }
 
-  filtered.forEach((o) => {
+  list.forEach((o) => {
     const col = document.createElement("div");
     col.className = "col";
 
@@ -82,8 +87,6 @@ function renderOrders() {
     const slackId = o.user_slack_id || "";
     const status = o.status || "pending";
     const statusClass = getStatusBadgeClass(status);
-
-    const hoursText = formatHours(o.total_cost);
 
     col.innerHTML = `
       <div class="card h-100 shadow border-0 rounded-3">
@@ -97,18 +100,14 @@ function renderOrders() {
           <p class="text-muted small mb-2">By: <a href="https://hackclub.enterprise.slack.com/team/${slackId}" target="_blank">${nickname}</a></p>
           <div class="d-flex justify-content-between align-items-center mt-auto">
             <p class="text-muted small mb-0">${formatDate(o.created_at)}</p>
-            <button type="button" class="btn btn-outline-primary btn-sm" data-order-id="${
-              o.id
-            }">View Order</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-order-id="${o.id}">View Order</button>
           </div>
         </div>
       </div>
     `;
 
-    col
-      .querySelector("button")
-      .addEventListener("click", () => openOrderModal(o));
-    orderList.appendChild(col);
+    col.querySelector("button").addEventListener("click", () => openOrderModal(o));
+    container.appendChild(col);
   });
 }
 
@@ -141,11 +140,15 @@ async function loadOrders() {
         "Server returned non-JSON response for /api/admin/orders:",
         txt
       );
-      orderList.innerHTML = `<div class="col-12 text-center py-3"><p class="text-muted">Server error: ${res.status} ${res.statusText}</p></div>`;
+      pendingOrderList.innerHTML = `<div class="col-12 text-center py-3"><p class="text-muted">Server error: ${res.status} ${res.statusText}</p></div>`;
+      fulfilledOrderList.innerHTML = `<div class="col-12 text-center py-3"><p class="text-muted">Server error: ${res.status} ${res.statusText}</p></div>`;
       return;
     }
     if (!res.ok) {
-      orderList.innerHTML = `<div class="col-12 text-center py-3"><p class="text-muted">${
+      pendingOrderList.innerHTML = `<div class="col-12 text-center py-3"><p class="text-muted">${
+        (data && data.error) || "Failed to load orders"
+      }</p></div>`;
+      fulfilledOrderList.innerHTML = `<div class="col-12 text-center py-3"><p class="text-muted">${
         (data && data.error) || "Failed to load orders"
       }</p></div>`;
       return;
@@ -155,19 +158,37 @@ async function loadOrders() {
     renderOrders();
   } catch (e) {
     console.error("Failed to load orders:", e);
-    orderList.innerHTML =
+    pendingOrderList.innerHTML =
+      '<div class="col-12 text-center py-3"><p class="text-muted">Failed to load orders</p></div>';
+    fulfilledOrderList.innerHTML =
       '<div class="col-12 text-center py-3"><p class="text-muted">Failed to load orders</p></div>';
   }
+}
+
+function renderOrders() {
+  const pendingTerm = (pendingSearchInput ? pendingSearchInput.value : "").trim();
+  const fulfilledTerm = (fulfilledSearchInput ? fulfilledSearchInput.value : "").trim();
+
+  const pending = orders.filter(
+    (o) => (String(o.status || "pending").toLowerCase() === "pending") && matchesSearch(o, pendingTerm)
+  );
+  const fulfilled = orders.filter(
+    (o) => (String(o.status || "").toLowerCase() === "fulfilled") && matchesSearch(o, fulfilledTerm)
+  );
+
+  pendingCount.textContent = `${pending.length} Order${pending.length !== 1 ? "s" : ""}`;
+  fulfilledCount.textContent = `${fulfilled.length} Order${fulfilled.length !== 1 ? "s" : ""}`;
+
+  renderList(pendingOrderList, pending);
+  renderList(fulfilledOrderList, fulfilled);
 }
 
 function openOrderModal(order) {
   currentOrder = order;
   const reward = rewards[order.reward_id] || null;
-  const rewardName = reward.name ? reward.name : `Reward #${order.reward_id}`;
+  const rewardName = reward && reward.name ? reward.name : `Reward #${order.reward_id}`;
 
-  orderModalLabel.textContent = `x${
-    order.quantity
-  } ${rewardName}`;
+  orderModalLabel.textContent = `x${order.quantity} ${rewardName}`;
   orderModalTitle.textContent = `Order #${order.id}`;
   orderModalBadge.className = "badge " + getStatusBadgeClass(order.status);
   orderModalBadge.textContent = String(order.status || "pending").toUpperCase();
@@ -180,9 +201,7 @@ function openOrderModal(order) {
   orderModalCreated.textContent = formatDate(order.created_at);
   orderModalName.textContent = `${order.name} (${order.email || ""})`;
   orderModalContact.textContent = `${order.phone || ""}`;
-  orderModalItems.textContent = `x${
-    order.quantity
-  } ${rewardName} • ${formatHours(order.total_cost)}`;
+  orderModalItems.textContent = `x${order.quantity} ${rewardName} • ${formatHours(order.total_cost)}`;
 
   let addr = "";
   try {
@@ -264,6 +283,7 @@ async function saveOrderNotes(orderId, notes) {
 }
 
 function setupSearch(input, clearBtn) {
+  if (!input || !clearBtn) return;
   input.addEventListener("input", () => {
     clearBtn.style.display = input.value ? "block" : "none";
     renderOrders();
@@ -278,7 +298,8 @@ function setupSearch(input, clearBtn) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  setupSearch(orderSearchInput, orderSearchClear);
+  setupSearch(pendingSearchInput, pendingSearchClear);
+  setupSearch(fulfilledSearchInput, fulfilledSearchClear);
 
   orderToggleStatusBtn.addEventListener("click", async () => {
     if (!currentOrder) return;

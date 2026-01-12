@@ -16,7 +16,6 @@
 %}{% endblock %} {% block content %}
 <div class="container-fluid">
   <div class="row">
-    {# SIDEBAR #}
     <nav
       id="adminSidebar"
       class="col-12 col-md-3 col-lg-2 bg-light sidebar collapse d-md-block"
@@ -39,10 +38,8 @@
       </div>
     </nav>
 
-    {# CONTENT #}
     <main class="col">
       <div class="container py-4">
-        {# IF ON MOBILE SHOW A MENU TO SHOW THE OFFCANVAS #}
         <button
           class="btn btn-outline-secondary d-md-none mb-3"
           data-bs-toggle="collapse"
@@ -53,19 +50,66 @@
           ☰ Menu
         </button>
 
-        {# ORDERS #}
         <section id="ordersSection">
-          <div class="section-header d-flex align-items-center justify-content-between mb-3">
-            <h2 class="section-title mb-0">ORDERS</h2>
+          <div class="section-header mb-3">
             <div class="d-flex align-items-center">
-              <div class="input-group me-2">
-                <input id="orderSearchInput" class="form-control form-control-modern" type="text" placeholder="Search by slack ID or nickname" />
-                <button id="orderSearchClear" class="btn btn-outline-secondary" type="button" style="display:none;">✕</button>
+              <h2 class="section-title me-3">PENDING ORDERS</h2>
+              <div class="input-group input-group-sm" style="width: 250px">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="pendingSearchInput"
+                  placeholder="Search (author, slack ID)..."
+                />
+                <button
+                  class="btn border-start-0"
+                  type="button"
+                  id="pendingSearchClear"
+                  style="display: none"
+                >
+                  &times;
+                </button>
               </div>
+            </div>
+            <span class="project-count" id="pendingCount">0 Orders</span>
+          </div>
+
+          <div
+            class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4"
+            id="pendingOrderList"
+          >
+            <div class="col-12 text-center text-muted py-4">
+              Loading Orders...
             </div>
           </div>
 
-          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="orderList">
+          <div class="section-header mt-4 mb-3">
+            <div class="d-flex align-items-center">
+              <h2 class="section-title me-3">FULFILLED ORDERS</h2>
+              <div class="input-group input-group-sm" style="width: 250px">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="fulfilledSearchInput"
+                  placeholder="Search (author, slack ID)..."
+                />
+                <button
+                  class="btn border-start-0"
+                  type="button"
+                  id="fulfilledSearchClear"
+                  style="display: none"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            <span class="project-count" id="fulfilledCount">0 Orders</span>
+          </div>
+
+          <div
+            class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4"
+            id="fulfilledOrderList"
+          >
             <div class="col-12 text-center text-muted py-4">
               Loading Orders...
             </div>
@@ -76,7 +120,6 @@
   </div>
 </div>
 
-{# ORDER MODAL #}
 <div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content border-0 shadow">
@@ -132,20 +175,33 @@
 
           <div class="col-12">
             <label for="orderNotes" class="form-label fw-bold">Notes</label>
-            <textarea id="orderNotes" class="form-control form-control-modern" rows="3"></textarea>
+            <textarea
+              id="orderNotes"
+              class="form-control form-control-modern"
+              rows="3"
+            ></textarea>
           </div>
         </div>
       </div>
       <div class="modal-footer border-0">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-        <button id="orderToggleStatusBtn" type="button" class="btn btn-primary">Toggle Status</button>
-        <button id="orderSaveNotesBtn" type="button" class="btn btn-secondary">Save Notes</button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          data-bs-dismiss="modal"
+        >
+          Close
+        </button>
+        <button id="orderToggleStatusBtn" type="button" class="btn btn-primary">
+          Toggle Status
+        </button>
+        <button id="orderSaveNotesBtn" type="button" class="btn btn-secondary">
+          Save Notes
+        </button>
       </div>
     </div>
   </div>
 </div>
 
-{# FOOTER #}
 <footer class="py-4 bg-light text-center mt-auto">
   <div class="container">
     <span class="text-muted"
