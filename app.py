@@ -728,7 +728,86 @@ def pay_project(project_id):
     if success:
         return jsonify({"success": True, "paid": amount})
     return jsonify({"success": False}), 500
-                                                                                                                    
+             
+# POST /api/orders
+@app.route("/api/orders", methods=["POST"])
+def create_order_endpoint():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    reward_id = data.get("reward_id")
+    quantity = int(data.get("quantity", 1))
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    address = data.get("address") or {}
+
+    if not all([reward_id, quantity, name, email]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    reward = admin_db.get_reward_by_id(int(reward_id))
+    if not reward:
+        return jsonify({"error": "Reward not found"}), 404
+
+    if quantity < 1 or quantity > 100:
+        return jsonify({"error": "Invalid quantity"}), 400
+
+    total_cost = float(reward["cost"]) * quantity
+
+    order_id = db.create_order(user["id"], int(reward_id), quantity, name, email, phone, address, total_cost)
+    if order_id is None:
+        return jsonify({"error": "Insufficient hours balance"}), 400
+
+    new_user = db.get_user_by_id(user["id"])
+    return jsonify({"success": True, "order_id": order_id, "remaining_hours": new_user.get("hours", 0)}), 201
+
+
+# GET /api/orders (user orders)
+@app.route("/api/orders", methods=["GET"])
+def list_orders_endpoint():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    orders = db.get_orders_for_user(user["id"])
+    return jsonify({"orders": orders})
+
+
+# GET /api/admin/orders (admin only)
+@app.route("/api/admin/orders", methods=["GET"])
+def admin_list_orders():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    if not user["is_admin"]:
+        return jsonify({"error": "Unauthorized"}), 403
+    orders = db.get_all_orders()
+    return jsonify({"orders": orders})
+
+
+# PATCH /api/admin/orders/<id> (admin: set status/notes)
+@app.route("/api/admin/orders/<int:order_id>", methods=["PATCH"])
+def admin_update_order(order_id):
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    if not user["is_admin"]:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    status = data.get("status")
+    notes = data.get("notes")
+
+    ok = True
+    if status:
+        if status not in ("pending", "fulfilled"):
+            return jsonify({"error": "Invalid status"}), 400
+        ok = ok and db.update_order_status(order_id, status)
+    if notes is not None:
+        ok = ok and db.update_order_notes(order_id, notes)
+
+    return jsonify({"success": ok})                                                                                                                                                                                                                                     
 
 if __name__ == "__main__":
     app.run(debug=True)

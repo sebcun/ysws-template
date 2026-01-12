@@ -1,9 +1,9 @@
 import sqlite3
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
+import json
 
 DB_NAME = "users.db"
-
 
 @contextmanager
 def get_db_connection():
@@ -17,7 +17,6 @@ def get_db_connection():
         raise
     finally:
         conn.close()
-
 
 def init_db():
     with get_db_connection() as conn:
@@ -54,15 +53,23 @@ def init_db():
         )
         c.execute("CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)")
         
-        c.execute("PRAGMA table_info(users)")
-        cols = [row["name"] for row in c.fetchall()]
-        if "hours" not in cols:
-            c.execute("ALTER TABLE users ADD COLUMN hours REAL DEFAULT 0")
-            
-        c.execute("PRAGMA table_info(projects)")
-        proj_cols = [row["name"] for row in c.fetchall()]
-        if "paid_hours" not in proj_cols:
-            c.execute("ALTER TABLE projects ADD COLUMN paid_hours REAL DEFAULT 0")
+        c.execute('''CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            reward_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT,
+            address TEXT,
+            status TEXT DEFAULT 'pending',
+            notes TEXT,
+            total_cost REAL NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )''')
+
+        
 
 
 def get_or_create_user(
@@ -392,3 +399,65 @@ def set_project_paid_hours(project_id: int, paid_hours: float) -> bool:
         c.execute("UPDATE projects SET paid_hours = ? WHERE id = ?", (paid_hours, project_id))
         c.execute("UPDATE users SET hours = COALESCE(hours, 0) + ? WHERE id = ?", (delta, user_id))
         return True
+ 
+def create_order(user_id: int, reward_id: int, quantity: int, name: str, email: str, phone: str, address: dict, total_cost: float) -> int:
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE users SET hours = hours - ? WHERE id = ? AND hours >= ?", (total_cost, user_id, total_cost))
+        if c.rowcount == 0:
+            return None
+        c.execute(
+            "INSERT INTO orders (user_id, reward_id, quantity, name, email, phone, address, total_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (user_id, reward_id, quantity, name, email, phone, json.dumps(address or {}), total_cost),
+        )
+        return c.lastrowid
+
+
+def get_orders_for_user(user_id: int):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = [dict(r) for r in c.fetchall()]
+        for r in rows:
+            try:
+                r["address"] = json.loads(r.get("address") or "{}")
+            except Exception:
+                r["address"] = {}
+        return rows
+
+
+def get_all_orders():
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("""SELECT o.*, u.email as user_email, u.nickname as user_nickname FROM orders o 
+                     JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC""")
+        rows = [dict(r) for r in c.fetchall()]
+        for r in rows:
+            try:
+                r["address"] = json.loads(r.get("address") or "{}")
+            except Exception:
+                r["address"] = {}
+        return rows
+
+
+def get_order_by_id(order_id: int):
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
+        r = c.fetchone()
+        return dict(r) if r else None
+
+
+def update_order_status(order_id: int, status: str) -> bool:
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order_id))
+        return c.rowcount > 0
+
+
+def update_order_notes(order_id: int, notes: str) -> bool:
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("UPDATE orders SET notes = ? WHERE id = ?", (notes, order_id))
+        return c.rowcount > 0
+                                                                                                                                                                                                                                                                                                                                                                                                    
