@@ -21,18 +21,26 @@ def get_db_connection():
 def init_db():
     with get_db_connection() as conn:
         c = conn.cursor()
-        c.execute(
-            """CREATE TABLE IF NOT EXISTS users (
+
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             nickname TEXT,
             slack_id TEXT,
             hours REAL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )"""
         )
-        c.execute(
-            """CREATE TABLE IF NOT EXISTS projects (
+        """)
+
+        c.execute("PRAGMA table_info(users)")
+        user_columns = {row[1] for row in c.fetchall()}
+
+        if "hours" not in user_columns:
+            c.execute("ALTER TABLE users ADD COLUMN hours REAL DEFAULT 0")
+
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY,
             user_id INTEGER NOT NULL,
             title TEXT NOT NULL,
@@ -43,17 +51,31 @@ def init_db():
             hours REAL DEFAULT 0,
             paid_hours REAL DEFAULT 0,
             status TEXT DEFAULT 'Building',
+            image_url TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )"""
         )
+        """)
+
+        c.execute("PRAGMA table_info(projects)")
+        project_columns = {row[1] for row in c.fetchall()}
+
+        if "paid_hours" not in project_columns:
+            c.execute("ALTER TABLE projects ADD COLUMN paid_hours REAL DEFAULT 0")
+        
+        if "image_url" not in project_columns:
+            c.execute("ALTER TABLE projects ADD COLUMN image_url TEXT")
+
         c.execute(
             "CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id)"
         )
-        c.execute("CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)")
-        
-        c.execute('''CREATE TABLE IF NOT EXISTS orders (
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status)"
+        )
+
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             reward_id INTEGER NOT NULL,
@@ -67,7 +89,11 @@ def init_db():
             total_cost REAL NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )''')
+        )
+        """)
+
+        conn.commit()
+
 
         
 
@@ -152,13 +178,14 @@ def create_project(
     hackatime_project: Optional[str] = None,
     hours: float = 0,
     paid_hours: float = 0,
+    image_url: Optional[str] = None,
 ) -> int:
     with get_db_connection() as conn:
         c = conn.cursor()
         c.execute(
             """INSERT INTO projects
-            (user_id, title, description, demo_link, github_link, hackatime_project, hours, paid_hours)
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, title, description, demo_link, github_link, hackatime_project, hours, paid_hours, image_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 user_id,
                 title,
@@ -168,6 +195,7 @@ def create_project(
                 hackatime_project,
                 hours,
                 paid_hours,
+                image_url,
             ),
         )
         return c.lastrowid
@@ -211,6 +239,7 @@ def update_project(
     hours: Optional[float] = None,
     paid_hours: Optional[float] = None,
     status: Optional[str] = None,
+    image_url: Optional[str] = None,
 ) -> bool:
     with get_db_connection() as conn:
         c = conn.cursor()
@@ -240,6 +269,9 @@ def update_project(
         if status is not None:
             updates.append("status = ?")
             params.append(status)
+        if image_url is not None:
+            updates.append("image_url = ?")
+            params.append(image_url)
         if not updates:
             return False
         params.append(project_id)

@@ -28,6 +28,8 @@ const githubInput = document.getElementById("githubInput");
 const hackatimeInput = document.getElementById("hackatimeInput");
 const statusSelect = document.getElementById("statusSelect");
 const creatorLink = document.getElementById("creatorLink");
+const projectImageSection = document.getElementById("projectImageSection");
+const projectImageImg = document.getElementById("projectImageImg");
 const approveBtn = document.getElementById("approveBtn");
 const rejectBtn = document.getElementById("rejectBtn");
 const editBtn = document.getElementById("editBtn");
@@ -192,6 +194,15 @@ function openProjectModal(project) {
   projectModalBadge.textContent = status;
   projectModalHours.textContent = formatHours(hours);
   projectDescText.textContent = description;
+  
+  // Handle project image
+  if (project.image_url) {
+    projectImageImg.src = project.image_url;
+    projectImageSection.style.display = "";
+  } else {
+    projectImageSection.style.display = "none";
+  }
+  
   demoInput.value = demoLink;
   githubInput.value = githubLink;
   hackatimeInput.value = hackatimeProject;
@@ -232,9 +243,11 @@ function openProjectModal(project) {
       payInput.disabled = false;
       if (payBtn) payBtn.disabled = false;
       paySection.style.display = "";
-      payHelper.textContent = `Cap: ${cap.toFixed(
-        cap % 1 === 0 ? 0 : 1
-      )} — step 0.5`;
+      if (payHelper) {
+        payHelper.textContent = `Cap: ${cap.toFixed(
+          cap % 1 === 0 ? 0 : 1
+        )} — step 0.5`;
+      }
     } else {
       payInput.value = "";
       payInput.disabled = true;

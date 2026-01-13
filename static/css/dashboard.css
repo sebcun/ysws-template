@@ -108,3 +108,30 @@
   font-weight: 600;
   border: 1px solid #dee2e6;
 }
+
+#dropZone {
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#dropZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#submitImagePreview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}

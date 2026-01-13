@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, redirect, request, session, jsonify, url_for
+from flask import Flask, render_template, redirect, request, session, jsonify, url_for, send_from_directory
 from urllib.parse import urlparse
 import requests
 from datetime import timedelta
@@ -9,11 +9,22 @@ import slack
 from dotenv import load_dotenv
 import json
 from pathlib import Path
+from werkzeug.utils import secure_filename
+import uuid
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET", os.urandom(24))
+
+UPLOAD_FOLDER = Path(__file__).parent / "static" / "uploads"
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
@@ -68,7 +79,6 @@ SITE_CONFIG = load_site_config()
 db.init_db()
 admin_db.init_db()
 
-# get user including admin/reviewer status
 def get_current_user(clear_stale=True):
     user_id = session.get("user_id")
     if not user_id:
@@ -211,7 +221,7 @@ def market():
     if not user:
         return redirect(url_for("login"))
 
-    return render_template("market.html")
+    return redirect(url_for("dashboard"))
 
 
 # GET /admin
@@ -404,8 +414,36 @@ def create_project():
         demo_link=data.get("demo_link"),
         github_link=data.get("github_link"),
         hackatime_project=data.get("hackatime_project"),
+        image_url=data.get("image_url"),
     )
     return jsonify({"success": True, "project_id": project_id}), 201
+
+
+# POST /api/upload
+@app.route("/api/upload", methods=["POST"])
+def upload_file():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    
+    if file and allowed_file(file.filename):
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        file_url = url_for('static', filename=f'uploads/{filename}', _external=True)
+        return jsonify({"success": True, "url": file_url}), 200
+    
+    return jsonify({"error": "Invalid file type"}), 400
 
 
 # GET /api/projects/<int:project_id>
@@ -515,6 +553,7 @@ def update_project(project_id):
         hackatime_project=data.get("hackatime_project"),
         hours=hours_to_update,
         status=data.get("status"),
+        image_url=data.get("image_url"),
     )
     return jsonify({"success": success})
 

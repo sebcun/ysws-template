@@ -2,6 +2,7 @@ let projects = [];
 let currentProject = null;
 let isEditMode = false;
 let hackatimeProjects = [];
+let submitImageUrl = null;
 
 const projectsGrid = document.getElementById("projectsGrid");
 const createProjectBtn = document.getElementById("createProjectBtn");
@@ -13,6 +14,9 @@ const projectModal = new bootstrap.Modal(
 );
 const submitChecklistModal = new bootstrap.Modal(
   document.getElementById("submitChecklistModal")
+);
+const imageUploadModal = new bootstrap.Modal(
+  document.getElementById("imageUploadModal")
 );
 
 const createProjectTitle = document.getElementById("createProjectTitle");
@@ -54,6 +58,15 @@ const checkReadme = document.getElementById("checkReadme");
 const checkBanner = document.getElementById("checkBanner");
 const checkShippable = document.getElementById("checkShippable");
 
+const submitImageInput = document.getElementById("submitImageInput");
+const submitImagePreview = document.getElementById("submitImagePreview");
+const submitImagePreviewImg = document.getElementById("submitImagePreviewImg");
+const continueToChecklistBtn = document.getElementById("continueToChecklistBtn");
+const dropZone = document.getElementById("dropZone");
+const dropZoneContent = document.getElementById("dropZoneContent");
+const selectFileBtn = document.getElementById("selectFileBtn");
+const changeImageBtn = document.getElementById("changeImageBtn");
+
 function getStatusBadge(status) {
   const statusMap = {
     Building: "bg-warning text-dark",
@@ -75,6 +88,23 @@ function formatHours(hours) {
     return `${h}h ${m}m`;
   }
   return "0h 0m";
+}
+
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (response.ok) {
+    const data = await response.json();
+    return data.url;
+  } else {
+    throw new Error('Failed to upload image');
+  }
 }
 
 async function loadProjects() {
@@ -239,6 +269,7 @@ function openProjectModal(project) {
   const hackatimeProject = project.hackatime_project || "";
   const status = project.status || "Building";
   const hours = project.hours || 0;
+  const imageUrl = project.image_url || "";
 
   projectModalLabel.textContent = title;
   projectTitleInput.value = title;
@@ -471,19 +502,15 @@ async function handleDelete() {
 }
 
 function handleSubmitClick() {
-  const hours = currentProject.hours || 0;
-  const hasDemo = !!currentProject.demo_link;
-  const hasGithub = !!currentProject.github_link;
-
-  checkHours.checked = hours >= 3;
-  checkDemo.checked = hasDemo;
-  checkGithub.checked = hasGithub;
-  checkReadme.checked = false;
-  checkBanner.checked = true;
-  checkShippable.checked = false;
-
-  checkAllChecked();
-  submitChecklistModal.show();
+  // Reset the image upload modal
+  submitImageInput.value = "";
+  dropZoneContent.style.display = "flex";
+  submitImagePreview.style.display = "none";
+  continueToChecklistBtn.disabled = true;
+  submitImageUrl = null;
+  
+  // Show image upload modal
+  imageUploadModal.show();
 }
 
 async function handleFinalSubmit() {
@@ -498,6 +525,7 @@ async function handleFinalSubmit() {
     },
     body: JSON.stringify({
       status: "Pending Review",
+      image_url: submitImageUrl,
     }),
   });
 
@@ -550,17 +578,136 @@ document.addEventListener("DOMContentLoaded", function () {
   checkDemo.addEventListener("change", checkAllChecked);
   checkGithub.addEventListener("change", checkAllChecked);
   checkReadme.addEventListener("change", checkAllChecked);
+  checkBanner.addEventListener("change", checkAllChecked);
   checkShippable.addEventListener("change", checkAllChecked);
 
-  const submitChecklistModalEl = document.getElementById(
-    "submitChecklistModal"
-  );
-  submitChecklistModalEl.addEventListener("show.bs.modal", function () {
+  // Image upload modal handlers
+  function handleFileSelect(file) {
+    if (file && file.type.match('image.*')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        submitImagePreviewImg.src = e.target.result;
+        dropZoneContent.style.display = "none";
+        submitImagePreview.style.display = "flex";
+        submitImagePreview.style.flexDirection = "column";
+        submitImagePreview.style.alignItems = "center";
+        continueToChecklistBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  submitImageInput.addEventListener("change", function() {
+    if (this.files.length > 0) {
+      handleFileSelect(this.files[0]);
+    }
+  });
+
+  selectFileBtn.addEventListener("click", function(e) {
+    e.preventDefault();
+    submitImageInput.click();
+  });
+
+  dropZone.addEventListener("click", function() {
+    if (dropZoneContent.style.display !== "none") {
+      submitImageInput.click();
+    }
+  });
+
+  changeImageBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    submitImageInput.click();
+  });
+
+  // Drag and drop handlers
+  dropZone.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = "#0d6efd";
+    this.style.backgroundColor = "#e7f1ff";
+  });
+
+  dropZone.addEventListener("dragleave", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = "#dee2e6";
+    this.style.backgroundColor = "#f8f9fa";
+  });
+
+  dropZone.addEventListener("drop", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.style.borderColor = "#dee2e6";
+    this.style.backgroundColor = "#f8f9fa";
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      submitImageInput.files = files;
+      handleFileSelect(files[0]);
+    }
+  });
+
+  continueToChecklistBtn.addEventListener("click", async function() {
+    if (submitImageInput.files.length === 0) return;
+    
+    continueToChecklistBtn.disabled = true;
+    continueToChecklistBtn.innerHTML =
+      '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
+    
+    try {
+      // Upload the image
+      submitImageUrl = await uploadImage(submitImageInput.files[0]);
+      
+      // Hide image upload modal
+      imageUploadModal.hide();
+      
+      // Show checklist modal
+      const hours = currentProject.hours || 0;
+      const hasDemo = !!currentProject.demo_link;
+      const hasGithub = !!currentProject.github_link;
+
+      checkHours.checked = hours >= 3;
+      checkDemo.checked = hasDemo;
+      checkGithub.checked = hasGithub;
+      checkReadme.checked = false;
+      checkBanner.checked = true; // Image was just uploaded
+      checkShippable.checked = false;
+
+      checkAllChecked();
+      submitChecklistModal.show();
+      
+      // Reset button
+      continueToChecklistBtn.disabled = false;
+      continueToChecklistBtn.textContent = "Continue to Checklist";
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+      continueToChecklistBtn.disabled = false;
+      continueToChecklistBtn.textContent = "Continue to Checklist";
+    }
+  });
+
+  // Handle z-index for image upload modal
+  const imageUploadModalEl = document.getElementById("imageUploadModal");
+  imageUploadModalEl.addEventListener("show.bs.modal", function () {
     this.style.zIndex = 1060;
     setTimeout(() => {
       const backdrops = document.querySelectorAll(".modal-backdrop");
       if (backdrops.length > 1) {
         backdrops[backdrops.length - 1].style.zIndex = 1059;
+      }
+    }, 0);
+  });
+
+  const submitChecklistModalEl = document.getElementById(
+    "submitChecklistModal"
+  );
+  submitChecklistModalEl.addEventListener("show.bs.modal", function () {
+    this.style.zIndex = 1070;
+    setTimeout(() => {
+      const backdrops = document.querySelectorAll(".modal-backdrop");
+      if (backdrops.length > 1) {
+        backdrops[backdrops.length - 1].style.zIndex = 1069;
       }
     }, 0);
   });
